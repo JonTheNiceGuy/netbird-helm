@@ -1,0 +1,28 @@
+stunner-gateway-operator:
+  stunnerGatewayOperator:
+    deployment:
+      tolerations:
+        - key: "vpn_endpoints_only"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+    dataplane:
+      spec:
+        tolerations:
+          - key: "vpn_endpoints_only"
+            operator: "Equal"
+            value: "true"
+            effect: "NoSchedule"
+  stunnerAuthService:
+    deployment:
+      tolerations:
+        - key: "vpn_endpoints_only"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+turn:
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: netbirdmesh.example.net
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-type: external

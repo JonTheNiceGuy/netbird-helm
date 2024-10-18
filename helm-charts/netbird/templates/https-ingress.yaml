@@ -1,0 +1,60 @@
+{{- if or .Values.dashboard.enable .Values.management.enable .Values.relay.enable  }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dashboard-netbird
+  annotations:
+{{- if eq .Values.ingress.http.ingressClassName "alb" }}
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+{{- if .Values.certificateArn }}
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.certificateArn }}
+{{- end }}
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+    alb.ingress.kubernetes.io/healthcheck-path: "/metrics"  # Management health check path
+    alb.ingress.kubernetes.io/healthcheck-port: "9090"      # Management health check port
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP    # Protocol for health check
+{{- else if eq .Values.ingress.http.ingressClassName "nginx" }}
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+{{- end }}
+{{- with .Values.ingress.http.annotations }}
+{{ toYaml . | nindent 4 }}
+{{- end }}
+  labels:
+    app: netbird
+spec:
+  ingressClassName: {{ .Values.ingress.http.ingressClassName }}
+  rules:
+  - host: {{ .Values.ingress.http.hostname }}
+    http:
+      paths:
+{{- if .Values.dashboard.enable }}
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: dashboard
+              port:
+                name: https
+{{- end }}
+{{- if .Values.management.enable }}
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: management
+              port:
+                name: grpc
+{{- end }}
+{{- if .Values.relay.enable }}
+        - path: /relay
+          pathType: Prefix
+          backend:
+            service:
+              name: relay
+              port:
+                name: https
+{{- end }}
+{{- end }}

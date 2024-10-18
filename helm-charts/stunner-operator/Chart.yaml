@@ -1,0 +1,10 @@
+apiVersion: v2
+name: stunner-operator
+description: A Helm Chart to deploy Netbird
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+dependencies:
+  - name: stunner-gateway-operator
+    version: 0.21.0
+    repository: "https://l7mp.io/stunner"

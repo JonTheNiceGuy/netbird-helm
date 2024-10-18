@@ -1,0 +1,6 @@
+management:
+    postgres:
+        hostname: database.host.example.net
+        username: netbird-username
+        password: netbird-password
+        database: netbird

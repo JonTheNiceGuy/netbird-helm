@@ -1,0 +1,17 @@
+{{- if .Values.dashboard.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app: dashboard
+  ports:
+    - name: https
+      port: 443
+      targetPort: https
+      protocol: TCP
+{{- end }}

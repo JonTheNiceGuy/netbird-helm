@@ -1,0 +1,50 @@
+{{- if or .Values.management.enable .Values.signal.enable }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: netbird-grpc
+  annotations:
+{{- if eq .Values.ingress.grpc.ingressClassName "alb" }}
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+{{- if .Values.certificateArn }}
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.certificateArn }}
+{{- end }}
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+    alb.ingress.kubernetes.io/backend-protocol-version: GRPC
+    alb.ingress.kubernetes.io/healthcheck-path: "/metrics"  # Management health check path
+    alb.ingress.kubernetes.io/healthcheck-port: "9090"      # Management health check port
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP    # Protocol for health check
+{{- else if eq .Values.ingress.grpc.ingressClassName "nginx" -}}
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPCS"
+{{- end }}
+{{- with .Values.ingress.grpc.annotations }}
+{{ toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.grpc.ingressClassName }}
+  rules:
+  - host: {{ .Values.ingress.grpc.hostname }}
+    http:
+      paths:
+{{- if .Values.management.enable }}
+      - path: /management.ManagementService
+        pathType: Prefix
+        backend:
+          service:
+            name: management
+            port:
+              name: grpc
+{{- end }}
+{{- if .Values.signal.enable }}
+      - path: /signalexchange.SignalExchange
+        pathType: Prefix
+        backend:
+          service:
+            name: signal
+            port:
+              name: grpc
+{{- end }}
+{{- end }}

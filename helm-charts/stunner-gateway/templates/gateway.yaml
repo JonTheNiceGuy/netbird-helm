@@ -1,0 +1,41 @@
+{{- if or .Values.ingress.turn.udpport .Values.ingress.turn.tcpport }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: stun-server-udp
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8086"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/live"
+{{- if and .Values.ingress.turn.udpport .Values.ingress.turn.tcpport }}
+    stunner.l7mp.io/enable-mixed-protocol-lb: "true"
+{{- end }}
+    stunner.l7mp.io/nodeport: '{
+{{- if .Values.ingress.turn.udpport -}}
+      "udp-listener":{{ .Values.ingress.turn.udpport }}
+{{- end -}}
+{{- if and .Values.ingress.turn.udpport .Values.ingress.turn.tcpport -}},{{- end -}}
+{{- if .Values.ingress.turn.tcpport -}}
+      "tcp-listener":{{ .Values.ingress.turn.tcpport }}
+{{- end -}}
+    }'
+spec:
+  gatewayClassName: stunner-gatewayclass
+  listeners:
+{{- if .Values.ingress.turn.udpport }}
+    - name: udp-listener
+      port: {{ .Values.ingress.turn.udpport }}
+      protocol: TURN-UDP
+      allowedRoutes:
+        namespaces:
+          from: All
+{{- end }}
+{{- if .Values.ingress.turn.tcpport }}
+    - name: tcp-listener
+      port: {{ .Values.ingress.turn.tcpport }}
+      protocol: TURN-tcp
+      allowedRoutes:
+        namespaces:
+          from: All
+{{- end }}
+{{- end }}

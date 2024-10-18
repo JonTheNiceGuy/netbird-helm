@@ -1,0 +1,111 @@
+{{- if .Values.management.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: management
+  labels:
+    app: management
+spec:
+  selector:
+    matchLabels:
+      app: management
+  replicas: {{ default .Values.replicaCount .Values.management.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: management
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - management
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      tolerations: {{ toYaml (default .Values.management.tolerations .Values.tolerations) | nindent 6 }}
+      terminationGracePeriodSeconds: 0
+      initContainers:
+        - name: init-management-config
+          image: busybox
+          command: ['sh', '-x', '-c', 'cp /etc/netbird/management.json /mnt/config/management.json']
+          volumeMounts:
+            - mountPath: /mnt/config
+              name: netbird-config
+            - mountPath: /etc/netbird/
+              name: netbird-management-json
+              readOnly: true
+      containers:
+        - name: management
+          image: "{{ .Values.management.image }}:{{ .Values.management.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/go/bin/netbird-mgmt"
+            - "management"
+            - "--port=443"
+            - "--log-file=console"
+            - "--log-level={{ .Values.management.loglevel | default .Values.loglevel }}"
+            - "--disable-anonymous-metrics=false"
+            - "--dns-domain={{ .Values.management.clientDnsDomain }}"
+{{- if .Values.management.singleAccount }}
+            - "--single-account-mode-domain={{ .Values.management.singleAccount }}"
+{{- end }}
+{{- if or .Values.certificate.generate .Values.certificate.server.tls.crt }}
+            - "--cert-file=/etc/netbird-tls/tls.crt"
+            - "--cert-key=/etc/netbird-tls/tls.key"
+{{- end }}
+          env:
+            - name: NETBIRD_STORE_ENGINE_POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: netbird
+                  key: NETBIRD_STORE_ENGINE_POSTGRES_DSN
+          volumeMounts:
+            - mountPath: /etc/netbird/
+              name: netbird-config
+            - mountPath: /var/lib/netbird/
+              name: netbird-management
+{{- if or .Values.certificate.generate .Values.certificate.server.tls.crt }}
+            - mountPath: /etc/netbird-tls/
+              name: netbird-internal-tls-cert
+{{- end }}
+          ports:
+            - name: grpc
+              containerPort: 443
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+      volumes:
+        - name: netbird-config
+          emptyDir: {}
+        - name: netbird-management
+          persistentVolumeClaim:
+            claimName: netbird-management
+        - name: netbird-management-json
+          secret:
+            secretName: netbird-management
+            items:
+              - key: management.json
+                path: management.json
+{{- if or .Values.certificate.generate .Values.certificate.server.tls.crt }}
+        - name: netbird-internal-tls-cert
+          secret:
+            secretName: netbird-internal-tls-cert
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+{{- end }}
+{{- end }}

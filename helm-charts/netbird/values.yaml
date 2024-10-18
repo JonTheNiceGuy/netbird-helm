@@ -1,0 +1,100 @@
+replicaCount: 1
+loglevel: info
+tolerations: []
+certificate:
+  generate: "true"
+  caLifespan: 3650
+  certLifeSpan: 3650
+  extraAltNames: []
+  server:
+    tls:
+      crt: ""
+      key: ""
+  ca:
+    crt: ""
+ingress:
+  http:
+    hostname: netbird.example.org
+    port: 443
+    ingressClassName: "alb"
+    annotations: {}
+  grpc:
+    hostname: api.netbird.example.org
+    port: 443
+    ingressClassName: "alb"
+    annotations: {}
+  turn:
+    enable: true
+    hostname: turn.netbird.example.org
+    tcpport: 3478
+    udpport: 3478
+dashboard:
+  enable: true
+  replicaCount: ""
+  tolerations: []
+  loglevel: ""
+  image: netbirdio/dashboard
+  tag: latest
+signal:
+  enable: true
+  replicaCount: ""
+  tolerations: []
+  loglevel: ""
+  image: netbirdio/signal
+  tag: latest
+  hostname: ""
+  port: ""
+relay:
+  enable: true
+  secret: ""
+  replicaCount: ""
+  tolerations: []
+  loglevel: ""
+  image: netbirdio/relay
+  tag: latest
+  endpoints: []
+management:
+  enable: true
+  replicaCount: ""
+  tolerations: []
+  loglevel: ""
+  image: netbirdio/management
+  tag: latest
+  singleAccount: ""
+  clientDnsDomain: netbird.selfhosted
+  postgres:
+    hostname: ""
+    username: ""
+    password: ""
+    database: ""
+    port: 5432
+turn:
+  secret: ""
+  endpoints: []
+use_auth0: ""
+oidc_auth:
+  auth0Domain: ""
+  type: ""
+  audience: ""
+  clientId: ""
+  clientSecret: ""
+  authority: ""
+  supportedScopes: ""
+  deviceScope: ""
+  redirectUri: ""
+  silentRedirectUri: ""
+  tokenSource: ""
+  authKeysLocation: ""
+  authTokenEndpoint: ""
+  authDeviceEndpoint: ""
+  authEndpoint: ""
+  authUserIdClaim: ""
+  certFile: ""
+  certKey: ""
+  idpSignKeyRefreshEnabled: ""
+  oidcConfigEndpoint: ""
+  ExtraConfig: "{}"
+  useIdToken: "false"
+  pkceAudience: ""
+  redirectUrls: "[]"
+  usePkceIdToken: "false"

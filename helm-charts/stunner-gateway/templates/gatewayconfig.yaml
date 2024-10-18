@@ -1,0 +1,10 @@
+apiVersion: stunner.l7mp.io/v1
+kind: GatewayConfig
+metadata:
+  name: stunner-gatewayconfig
+spec:
+  logLevel: "all:DEBUG,turn:INFO"
+  authType: plaintext
+  userName: "{{ .Values.turn.username }}"
+  password: "{{ .Values.turn.secret }}"
+  loadBalancerServiceAnnotations: {{ toYaml (.Values.turn.annotations) | nindent 4 }}

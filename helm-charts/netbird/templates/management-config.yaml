@@ -1,0 +1,170 @@
+{{- if .Values.management.enable }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: netbird-management
+type: Opaque
+stringData:
+  "management.json": |
+    {
+      "Stuns": [
+{{- if .Values.ingress.turn.enable }}
+{{- if .Values.ingress.turn.udpport }}
+        {
+          "Proto": "udp",
+          "URI": "stun:{{ .Values.ingress.turn.hostname }}:{{ .Values.ingress.turn.udpport }}",
+          "Username": "",
+          "Password": null
+        }
+{{- end -}}
+{{- if and .Values.ingress.turn.udpport .Values.ingress.turn.tcpport -}},{{- end -}}
+{{- if .Values.ingress.turn.tcpport }}
+        {
+          "Proto": "tcp",
+          "URI": "stun:{{ .Values.ingress.turn.hostname }}:{{ .Values.ingress.turn.tcpport }}",
+          "Username": "",
+          "Password": null
+        }
+{{- end }}
+{{- end }}
+{{- if and .Values.ingress.turn.enable .Values.turn.endpoints }},{{- end -}}
+{{- range .Values.turn.endpoints }}
+          {
+            "Proto": "{{ .protocol | default "udp" }}",
+            "URI": "stun:{{ .hostname }}:{{ .tcpport }}",
+            "Username": "",
+            "Password": null
+          }
+{{- end }}
+{{- if or .Values.ingress.turn.udpport .Values.ingress.turn.tcpport }}{{ if .Values.turn.endpoints }},{{- end -}}{{- end -}}
+{{- range .Values.turn.endpoints }}
+          {
+            "Proto": "{{ .protocol | default "udp" }}",
+            "URI": "turn:{{ .hostname }}:{{ .tcpport }}",
+            "Username": "self",
+            "Password": "{{ $.Values.turn.secret }}"
+          }
+{{- end }}
+      ],
+      "TURNConfig": {
+{{- if .Values.ingress.turn.enable }}
+        "Turns": [
+{{- if .Values.ingress.turn.udpport }}
+          {
+            "Proto": "udp",
+            "URI": "turn:{{ .Values.ingress.turn.hostname }}:{{ .Values.ingress.turn.udpport }}",
+            "Username": "self",
+            "Password": "{{ .Values.turn.secret }}"
+          }
+{{- end -}}
+{{- if and .Values.ingress.turn.udpport .Values.ingress.turn.tcpport -}},{{- end -}}
+{{- if .Values.ingress.turn.tcpport }}
+          {
+            "Proto": "tcp",
+            "URI": "turn:{{ .Values.ingress.turn.hostname }}:{{ .Values.ingress.turn.tcpport }}",
+            "Username": "self",
+            "Password": "{{ .Values.turn.secret }}"
+          }
+{{- end }}
+{{- if and .Values.ingress.turn.enable .Values.turn.endpoints }},{{- end -}}
+{{- range .Values.turn.endpoints }}
+          {
+            "Proto": "{{ .protocol | default "udp" }}",
+            "URI": "turn:{{ .hostname }}:{{ .tcpport }}",
+            "Username": "self",
+            "Password": "{{ $.Values.turn.secret }}"
+          }
+{{- end }}
+        ],
+        "CredentialsTTL": "12h",
+        "Secret": "secret",
+        "TimeBasedCredentials": false
+{{- end }}
+      },
+      "Relay": {
+        "Addresses": [
+{{- if .Values.relay.enable }}
+          "rels://{{ .Values.ingress.http.hostname }}:{{ .Values.ingress.http.port }}"
+{{- end }}
+{{- if and .Values.relay.enable .Values.relay.endpoints -}},{{- end }}
+{{- range .Values.relay.endpoints }}
+          "rel{{ if .tls | default true }}s{{ end}}://{{ .hostname }}:{{ .port }}"
+{{- end }}
+        ],
+        "CredentialsTTL": "24h",
+        "Secret": "{{ .Values.relay.secret }}"
+      },
+      "Signal": {
+        "Proto": "https",
+        "URI": "{{ .Values.signal.hostname | default .Values.ingress.grpc.hostname }}:{{ .Values.signal.port | default .Values.ingress.grpc.port }}",
+        "Username": "",
+        "Password": null
+      },
+      "ReverseProxy": {
+        "TrustedHTTPProxies": [],
+        "TrustedHTTPProxiesCount": 0,
+        "TrustedPeers": [
+          "0.0.0.0/0"
+        ]
+      },
+      "Datadir": "",
+      "DataStoreEncryptionKey": "",
+      "StoreConfig": {
+        "Engine": "postgres"
+      },
+      "HttpConfig": {
+        "Address": "0.0.0.0:443",
+        "AuthIssuer": "{{ .Values.oidc_auth.authority }}",
+        "AuthAudience": "{{ .Values.oidc_auth.audience }}",
+        "AuthKeysLocation": "{{ .Values.oidc_auth.authKeysLocation }}",
+        "AuthUserIDClaim": "{{ .Values.oidc_auth.authUserIdClaim }}",
+        "CertFile": "{{ .Values.oidc_auth.certFile }}",
+        "CertKey": "{{ .Values.oidc_auth.certKey }}",
+        "IdpSignKeyRefreshEnabled": {{ .Values.oidc_auth.idpSignKeyRefreshEnabled }},
+        "OIDCConfigEndpoint": "{{ .Values.oidc_auth.oidcConfigEndpoint }}"
+      },
+      "IdpManagerConfig": {
+        "ManagerType": "{{ .Values.oidc_auth.type }}",
+        "ClientConfig": {
+          "Issuer": "{{ .Values.oidc_auth.authority }}",
+          "TokenEndpoint": "{{ .Values.oidc_auth.authTokenEndpoint }}",
+          "ClientID": "{{ .Values.oidc_auth.clientId }}",
+          "ClientSecret": "{{ .Values.oidc_auth.clientSecret }}",
+          "GrantType": "client_credentials"
+        },
+        "ExtraConfig": {{ .Values.oidc_auth.extraConfig }},
+        "Auth0ClientCredentials": null,
+        "AzureClientCredentials": null,
+        "KeycloakClientCredentials": null,
+        "ZitadelClientCredentials": null
+      },
+      "DeviceAuthorizationFlow": {
+        "Provider": "{{- if .Values.oidc_auth.clientId -}}hosted{{- else -}}none{{- end -}}",
+        "ProviderConfig": {
+          "Audience": "{{ .Values.oidc_auth.audience }}",
+          "AuthorizationEndpoint": "",
+          "Domain": "{{ .Values.oidc_auth.auth0Domain }}",
+          "ClientID": "{{ .Values.oidc_auth.clientId }}",
+          "ClientSecret": "",
+          "TokenEndpoint": "{{ .Values.oidc_auth.authTokenEndpoint }}",
+          "DeviceAuthEndpoint": "{{ .Values.oidc_auth.authDeviceEndpoint }}",
+          "Scope": "{{ .Values.oidc_auth.deviceScope }}",
+          "UseIDToken": {{ .Values.oidc_auth.useIdToken }},
+          "RedirectURLs": null
+        }
+      },
+      "PKCEAuthorizationFlow": {
+        "ProviderConfig": {
+          "Audience": "{{ .Values.oidc_auth.pkceAudience | default .Values.oidc_auth.audience }}",
+          "ClientID": "{{ .Values.oidc_auth.clientId }}",
+          "ClientSecret": "{{ .Values.oidc_auth.clientSecret }}",
+          "Domain": "",
+          "AuthorizationEndpoint": "{{ .Values.oidc_auth.authEndpoint }}",
+          "TokenEndpoint": "{{ .Values.oidc_auth.authTokenEndpoint }}",
+          "Scope": "{{ .Values.oidc_auth.supportedScopes }}",
+          "RedirectURLs": {{ .Values.oidc_auth.redirectUrls }},
+          "UseIDToken": {{ .Values.oidc_auth.usePkceIdToken }}
+        }
+      }
+    }
+{{- end }}

@@ -1,0 +1,29 @@
+{{- $tlsCrt := "" }}
+{{- $tlsKey := "" }}
+{{- $caCrt := "" }}
+{{- if .Values.certificate.generate }}
+    {{- $ca := genCA "svc-cat-ca" (.Values.certificate.caLifespan | int) }}
+    {{- $svcName := .Chart.Name | trunc 63 | trimSuffix "-" }}
+    {{- $cn := printf "%s.%s.svc" $svcName .Release.Namespace }}
+    {{- $altName1 := printf "%s.cluster.local" $cn }}
+    {{- $altName2 := printf "%s" $cn }}
+    {{- $server := genSignedCert $cn nil (concat (list $altName1 $altName2) .Values.certificate.extraAltNames) (.Values.certificate.certLifespan | int) $ca }}
+    {{- $caCrt =  $ca.Cert }}
+    {{- $tlsCrt = $server.Cert }}
+    {{- $tlsKey = $server.Key }}
+{{- else }}
+    {{- $tlsCrt = required "Value certificate.server.tls.crt is required when certificate.generate is false" .Values.certificate.server.tls.crt }}
+    {{- $tlsKey = required "Value certificate.server.tls.key is required when certificate.generate is false" .Values.certificate.server.tls.key }}
+    {{- $caCrt = required "Value certificate.ca.crt is required when certificate.generate is false" .Values.certificate.ca.crt }}
+{{- end }}
+{{- $combinedCrt := printf "%s %s" $tlsCrt $caCrt }}
+
+{{- if $tlsCrt }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: netbird-internal-tls-cert
+data:
+  tls.crt: {{ b64enc $combinedCrt }}
+  tls.key: {{ b64enc $tlsKey }}
+{{- end }}

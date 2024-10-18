@@ -1,0 +1,78 @@
+{{- if .Values.relay.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay
+  labels:
+    app: relay
+spec:
+  selector:
+    matchLabels:
+      app: relay
+  replicas: {{ .Values.relay.replicaCount | default .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: relay
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - relay
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      tolerations: {{ toYaml (.Values.relay.tolerations | default .Values.tolerations) | nindent 6 }}
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: relay
+          image: "{{ .Values.relay.image }}:{{ .Values.relay.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NB_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: netbird
+                  key: NB_AUTH_SECRET
+          ports:
+            - name: https
+              containerPort: 443
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+          command:
+            - "/go/bin/netbird-relay"
+            - "relay"
+            - "--log-file=console"
+            - "--log-level={{ .Values.relay.loglevel | default .Values.loglevel }}"
+            - "--listen-address=:443"
+            - "--exposed-address={{ .Values.ingress.http.hostname }}:{{ .Values.relay.port }}"
+{{- if or .Values.certificate.generate .Values.certificate.server.tls.crt }}
+            - "--tls-cert-file=/etc/netbird-tls/tls.crt"
+            - "--tls-key-file=/etc/netbird-tls/tls.key"
+          volumeMounts:
+            - mountPath: /etc/netbird-tls/
+              name: netbird-internal-tls-cert
+      volumes:
+        - name: netbird-internal-tls-cert
+          secret:
+            secretName: netbird-internal-tls-cert
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+{{- end }}
+{{- end }}

@@ -1,0 +1,108 @@
+{{- if .Values.dashboard.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+spec:
+  selector:
+    matchLabels:
+      app: dashboard
+  replicas: {{ .Values.dashboard.replicaCount | default .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - dashboard
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      tolerations: {{ toYaml (.Values.dashboard.tolerations | default .Values.tolerations) | nindent 6 }}
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: dashboard
+          image: "{{ .Values.dashboard.image }}:{{ .Values.dashboard.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NB_LOG_LEVEL
+              value: "{{ .Values.dashboard.loglevel | default .Values.loglevel }}"
+            - name: NETBIRD_MGMT_API_ENDPOINT
+              value: "https://{{ .Values.ingress.http.hostname }}:{{ .Values.ingress.http.port }}"
+            - name: NETBIRD_MGMT_GRPC_API_ENDPOINT
+              value: "https://{{ .Values.ingress.grpc.hostname }}:{{ .Values.ingress.grpc.port }}"
+            - name: AUTH_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: netbird
+                  key: AUTH_AUDIENCE
+            - name: AUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: netbird
+                  key: AUTH_CLIENT_ID
+            - name: AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: netbird
+                  key: AUTH_CLIENT_SECRET
+            - name: AUTH_AUTHORITY
+              value: "{{ .Values.oidc_auth.authority }}"
+            - name: USE_AUTH0
+              value: "{{ .Values.use_auth0 }}"
+            - name: AUTH_SUPPORTED_SCOPES
+              value: "{{ .Values.oidc_auth.supportedScopes }}"
+            - name: AUTH_REDIRECT_URI
+              value: "{{ .Values.oidc_auth.redirectUri }}"
+            - name: AUTH_SILENT_REDIRECT_URI
+              value: "{{ .Values.oidc_auth.silentRedirectUri }}"
+            - name: NETBIRD_TOKEN_SOURCE
+              value: "{{ .Values.oidc_auth.tokenSource }}"
+            - name: NGINX_SSL_PORT
+              value: "443"
+          ports:
+            - name: https
+              containerPort: 443
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+{{- if or .Values.certificate.generate .Values.certificate.server.tls.crt }}
+          volumeMounts:
+            - mountPath: /etc/nginx
+              name: netbird-internal-tls-config
+            - mountPath: /etc/nginx-tls/
+              name: netbird-internal-tls-cert
+      initContainers:
+        - name: init-tls-config
+          image: "{{ .Values.dashboard.image }}:{{ .Values.dashboard.tag }}"
+          command: ['sh', '-x', '-c', 'cp -Rf /etc/nginx/* /mnt/config/ ; mkdir -p /mnt/config/certbot ; mkdir -p /mnt/config/http.d ; chown root:root /mnt/config/certbot ; chmod 755 /mnt/config/certbot ; install -o root -g root -m 644 /usr/lib/python3.*/site-packages/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf /mnt/config/certbot/ ; install -o root -g root -m 644 /usr/lib/python3.*/site-packages/certbot/ssl-dhparams.pem /mnt/config/certbot/ ; printf "server {\n listen 443 ssl http2;\n listen [::]:443 ssl http2;\n server_name _;\n ssl_certificate /etc/nginx-tls/tls.crt;\n ssl_certificate_key /etc/nginx-tls/tls.key;\n include /etc/nginx/certbot/options-ssl-nginx.conf;\n ssl_dhparam /etc/nginx/certbot/ssl-dhparams.pem;\n root /usr/share/nginx/html;\n location / {\n  try_files \$uri \$uri.html \$uri/ =404;\n  add_header Cache-Control \"no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0\";\n  expires off;\n }\n error_page 404 /404.html;\n location = /404.html {\n  internal;\n  add_header Cache-Control \"no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0\";\n  expires off;\n }\n}" > /mnt/config/http.d/ssl.conf']
+          volumeMounts:
+            - mountPath: /mnt/config/
+              name: netbird-internal-tls-config
+      volumes:
+        - name: netbird-internal-tls-config
+          emptyDir: {}
+        - name: netbird-internal-tls-cert
+          secret:
+            secretName: netbird-internal-tls-cert
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+{{- end }}
+{{- end }}

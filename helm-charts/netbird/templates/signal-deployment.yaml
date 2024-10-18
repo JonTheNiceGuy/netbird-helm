@@ -1,0 +1,71 @@
+{{- if .Values.signal.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signal
+  labels:
+    app: signal
+spec:
+  selector:
+    matchLabels:
+      app: signal
+  replicas: {{ default .Values.replicaCount .Values.signal.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: signal
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - signal
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      tolerations: {{ toYaml (default .Values.signal.tolerations .Values.tolerations) | nindent 6 }}
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: signal
+          image: "{{ .Values.signal.image }}:{{ .Values.signal.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 443
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+          command:
+            - "/go/bin/netbird-signal"
+            - "run"
+            - "--log-file=console"
+            - "--log-level={{ .Values.signal.loglevel | default .Values.loglevel }}"
+            - "--port=443"
+{{- if or .Values.certificate.generate .Values.certificate.server.tls.crt }}
+            - "--cert-file=/etc/netbird-tls/tls.crt"
+            - "--cert-key=/etc/netbird-tls/tls.key"
+          volumeMounts:
+            - mountPath: /etc/netbird-tls/
+              name: netbird-internal-tls-cert
+      volumes:
+        - name: netbird-internal-tls-cert
+          secret:
+            secretName: netbird-internal-tls-cert
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+{{- end }}
+{{- end }}

@@ -1,0 +1,13 @@
+{{- if .Values.management.enable }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: netbird-management
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1G
+  storageClassName: efs
+{{- end }}

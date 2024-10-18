@@ -1,0 +1,21 @@
+{{- if .Values.management.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: management
+  labels:
+    app: management
+spec:
+  type: ClusterIP
+  selector:
+    app: management
+  ports:
+    - name: grpc
+      port: 443
+      targetPort: grpc
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

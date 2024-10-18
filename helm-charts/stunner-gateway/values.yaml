@@ -1,0 +1,7 @@
+turn:
+  annotations: {}
+  username: ""
+  secret: ""
+ingress:
+  turn:
+    port: 3478

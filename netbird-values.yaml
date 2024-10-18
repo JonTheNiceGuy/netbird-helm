@@ -1,0 +1,47 @@
+dnsname: netbirdmesh.example.net
+certificateArn: arn:aws:acm:eu-west-1:123456789012:certificate/abcdef12-34ab-cd56-7ef8-9012abcdef34
+replicaCount: 1
+tolerations:
+  - key: "vpn_endpoints_only"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+ingress:
+  http:
+    hostname: netbirdmesh.example.net
+    ingressClassName: nginx
+  grpc:
+    hostname: api.netbirdmesh.example.net
+  turn:
+    enable: true
+    hostname: stun.netbirdmesh.example.net
+    udpport: 12345
+    tcpport: 12345
+dashboard:
+  loglevel: trace
+relay:
+  loglevel: trace
+signal:
+  loglevel: trace
+management:
+  singleAccount: netbirdmesh.example.net
+  clientDnsDomain: client.netbirdmesh.example.net
+  loglevel: trace
+use_auth0: "false"
+oidc_auth:
+  type: "okta"
+  authority: https://example.okta.com
+  supportedScopes: openid profile email groups
+  deviceScope: openid email
+  redirectUri: /auth
+  silentRedirectUri: /silent-auth
+  tokenSource: idToken
+  authKeysLocation: https://example.okta.com/oauth2/v1/keys
+  authTokenEndpoint: https://example.okta.com/oauth2/v1/token
+  authDeviceEndpoint: https://example.okta.com/oauth2/v1/device/authorize
+  authEndpoint: https://example.okta.com/oauth2/v1/authorize
+  idpSignKeyRefreshEnabled: "false"
+  oidcConfigEndpoint: https://example.okta.com/.well-known/openid-configuration
+  useIdToken: "true"
+  usePkceIdToken: "true"
+  redirectUrls: "[\"http://localhost:53000\"]"

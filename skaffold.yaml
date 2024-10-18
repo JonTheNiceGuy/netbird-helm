@@ -1,0 +1,33 @@
+apiVersion: skaffold/v3
+kind: Config
+profiles:
+  - name: netbird
+    deploy:
+      helm:
+        releases:
+          - name: netbird
+            chartPath: ./helm-charts/netbird
+            namespace: netbird
+            createNamespace: true
+            valuesFiles:
+              - netbird-values.yaml
+              - secrets.sops.yaml
+              - rds.sops.yaml
+            useHelmSecrets: true
+  - name: stunner
+    deploy:
+      helm:
+        releases:
+          - name: stunner-operator
+            chartPath: ./helm-charts/stunner-operator
+            namespace: netbird-stunner-operator
+            createNamespace: true
+          - name: stunner-gateway
+            chartPath: ./helm-charts/stunner-gateway
+            namespace: stunner
+            createNamespace: true
+            valuesFiles:
+              - netbird-values.yaml
+              - stunner-values.yaml
+              - secrets.sops.yaml
+            useHelmSecrets: true
