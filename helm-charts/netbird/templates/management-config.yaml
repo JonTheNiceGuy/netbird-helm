@@ -27,23 +27,15 @@ stringData:
         }
 {{- end }}
 {{- end }}
-{{- if and .Values.ingress.turn.enable .Values.turn.endpoints }},{{- end -}}
-{{- range .Values.turn.endpoints }}
-          {
-            "Proto": "{{ .protocol | default "udp" }}",
-            "URI": "stun:{{ .hostname }}:{{ .tcpport }}",
-            "Username": "",
-            "Password": null
-          }
-{{- end }}
-{{- if or .Values.ingress.turn.udpport .Values.ingress.turn.tcpport }}{{ if .Values.turn.endpoints }},{{- end -}}{{- end -}}
-{{- range .Values.turn.endpoints }}
-          {
-            "Proto": "{{ .protocol | default "udp" }}",
-            "URI": "turn:{{ .hostname }}:{{ .tcpport }}",
-            "Username": "self",
-            "Password": "{{ $.Values.turn.secret }}"
-          }
+{{- if or .Values.ingress.turn.enable .Values.turn.endpoints -}},{{- end -}}
+{{- range $index, $element := .Values.turn.endpoints }}
+{{- if $index }},{{ end }}
+        {
+          "Proto": "{{ .protocol | default "udp" }}",
+          "URI": "stun:{{ .hostname }}:{{ .port }}",
+          "Username": "",
+          "Password": null
+        }
 {{- end }}
       ],
       "TURNConfig": {
@@ -66,11 +58,12 @@ stringData:
             "Password": "{{ .Values.turn.secret }}"
           }
 {{- end }}
-{{- if and .Values.ingress.turn.enable .Values.turn.endpoints }},{{- end -}}
-{{- range .Values.turn.endpoints }}
+{{- if or .Values.ingress.turn.enable .Values.turn.endpoints -}},{{- end -}}
+{{- range $index, $element := .Values.turn.endpoints }}
+{{- if $index }},{{ end }}
           {
             "Proto": "{{ .protocol | default "udp" }}",
-            "URI": "turn:{{ .hostname }}:{{ .tcpport }}",
+            "URI": "turn:{{ .hostname }}:{{ .port }}",
             "Username": "self",
             "Password": "{{ $.Values.turn.secret }}"
           }
